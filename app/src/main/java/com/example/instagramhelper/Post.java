@@ -34,27 +34,18 @@ class GraphQL{
 }
 
 class User{
-    @SerializedName("id")
-    @Expose
-    private int id;
 
     @SerializedName("edge_owner_to_timeline_media")
     @Expose
     private EdgeOwnerToTimelineMedia edge_owner_to_timeline_media;
 
-    public User(int id, EdgeOwnerToTimelineMedia edge_owner_to_timeline_media) {
-        this.id = id;
+    public User(EdgeOwnerToTimelineMedia edge_owner_to_timeline_media) {
         this.edge_owner_to_timeline_media = edge_owner_to_timeline_media;
     }
 
     public EdgeOwnerToTimelineMedia getEdge_owner_to_timeline_media() {
         return edge_owner_to_timeline_media;
     }
-
-    public int getId() {
-        return id;
-    }
-
 
 }
 

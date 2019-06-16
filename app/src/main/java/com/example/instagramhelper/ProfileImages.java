@@ -27,6 +27,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 
 import retrofit2.Call;
@@ -46,11 +47,12 @@ public class ProfileImages extends AppCompatActivity {
     private ArrayList<String> imagesGallary;
     private ArrayList<String> photoInst = new ArrayList<>();
 
-    private GridImageAdapter adapterGridView ;
+    private GridImageAdapter adapterGridView = null ;
     private SquareImageView prevSelectItem = null;
     private ImageView save;
 
     private File photoFile = null;
+    private File tmpFile;
     private String imageSaveToInst = null;
 
     @Override
@@ -58,23 +60,87 @@ public class ProfileImages extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_profile);
         save = findViewById(R.id.saveChange);
+        adapterGridView = new GridImageAdapter(mContext, R.layout.layout_image_gridview, "", new ArrayList<String>(), 0);
+        tmpFile = new File(mContext.getFilesDir(), "tmp.txt");
 
-        final ImageView apply = findViewById(R.id.applyChange);
-        apply.setOnClickListener(new View.OnClickListener() {
+        startApp();
+
+        Button addMore = findViewById(R.id.butAddMore);
+        addMore.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                EditText username = findViewById(R.id.editProfileName);
-                USERNAME = username.getText().toString();
-                username.setVisibility(View.INVISIBLE);
-                apply.setVisibility(View.INVISIBLE);
-                TextView profileName = findViewById(R.id.profileName);
-                profileName.setText(USERNAME);
-                profileName.setVisibility(View.VISIBLE);
-                save.setVisibility(View.VISIBLE);
-                tmpImageList();
+                if(imageSaveToInst != null){
+                    refreshPhotoInst(imageSaveToInst);
+                } else {
+                    Toast.makeText(mContext, "Виберіть картинку для завантаження", Toast.LENGTH_LONG).show();
+                }
             }
         });
 
+        imagesGallary = getAllShownImagesPath(this);
+        for (String iteam :
+                imagesGallary) {
+            Log.i("Image", iteam);
+        }
+        initRecyclerView(imagesGallary);
+        initSpinner();
+    }
+
+
+    private void startApp(){
+
+        final EditText username = findViewById(R.id.editProfileName);
+        final TextView profileName = findViewById(R.id.profileName);
+        final ImageView apply = findViewById(R.id.applyChange);
+
+        if(tmpFile.exists() && ReadWriteFile.read(mContext, tmpFile.getName()) != ""){
+
+           USERNAME =  ReadWriteFile.read(mContext, tmpFile.getName());
+           username.setVisibility(View.INVISIBLE);
+           apply.setVisibility(View.INVISIBLE);
+           profileName.setText(USERNAME);
+           profileName.setVisibility(View.VISIBLE);
+           save.setVisibility(View.VISIBLE);
+           tmpImageList();
+        }
+
+        apply.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                USERNAME = username.getText().toString();
+                username.setVisibility(View.INVISIBLE);
+                apply.setVisibility(View.INVISIBLE);
+                profileName.setText(USERNAME);
+                profileName.setVisibility(View.VISIBLE);
+                save.setVisibility(View.VISIBLE);
+                //
+                if(!tmpFile.exists()){
+                    try {
+                        tmpFile.createNewFile();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }else {
+                    ReadWriteFile.write(mContext, tmpFile.getName(), USERNAME);
+                    Log.i(TAG, tmpFile.getAbsolutePath());
+                    tmpImageList();
+                }
+            }
+        });
+
+        profileName.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                photoInst.clear();
+                adapterGridView.notifyDataSetChanged();
+                USERNAME = "";
+                profileName.setVisibility(View.INVISIBLE);
+                save.setVisibility(View.INVISIBLE);
+                username.setVisibility(View.VISIBLE);
+                apply.setVisibility(View.VISIBLE);
+                username.setText("");
+            }
+        });
 
 
         save.setOnClickListener(new View.OnClickListener() {
@@ -96,28 +162,8 @@ public class ProfileImages extends AppCompatActivity {
             }
         });
 
-
-        Button addMore = findViewById(R.id.butAddMore);
-        addMore.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if(imageSaveToInst != null){
-                    refreshPhotoInst(imageSaveToInst);
-                } else {
-                    Toast.makeText(mContext, "Виберіть картинку для завантаження", Toast.LENGTH_LONG).show();
-                }
-            }
-        });
-
-        imagesGallary = getAllShownImagesPath(this);
-        for (String iteam :
-                imagesGallary) {
-            Log.i("Image", iteam);
-        }
-        initRecyclerView(imagesGallary);
-        tmpImageList();
-        initSpinner();
     }
+
 
     private void tmpImageList(){
 
@@ -128,24 +174,26 @@ public class ProfileImages extends AppCompatActivity {
                     @Override
                     public void onResponse(Call<Post> call, Response<Post> response) {
                         Post post = response.body();
-                        if(post.getGraphql().getUser().getEdge_owner_to_timeline_media().getEdges().size() > 0)
-                        {
-                            for (Edge iteam : post.getGraphql().getUser().getEdge_owner_to_timeline_media().getEdges()
-                                 ) {
-                                photoInst.add(iteam.getNode().getDisplay_url());
-                                //Log.i(TAG, iteam.getNode().getDisplay_url());
+                        if(response.code() == 200) {
+                            if (post.getGraphql().getUser().getEdge_owner_to_timeline_media().getEdges().size() > 0) {
+                                for (Edge iteam : post.getGraphql().getUser().getEdge_owner_to_timeline_media().getEdges()
+                                ) {
+                                    photoInst.add(iteam.getNode().getDisplay_url());
+                                    //Log.i(TAG, iteam.getNode().getDisplay_url());
+                                }
+                            } else {
+                                Toast.makeText(mContext, "Записів поки немає або акаунт закритий", Toast.LENGTH_SHORT).show();
                             }
-                        } else {
-                            Toast.makeText(mContext, "Неможливо загрузити пости", Toast.LENGTH_SHORT).show();
+                            setupImageGrid(photoInst);
                         }
                     }
 
                     @Override
                     public void onFailure(Call<Post> call, Throwable t) {
                         Toast.makeText(mContext, "Неможливо зєднатися з сервером", Toast.LENGTH_SHORT).show();
+                        Log.e(TAG, t.getMessage());
                     }
                 });
-        setupImageGrid(photoInst);
     }
 
     private void initSpinner(){
@@ -194,8 +242,10 @@ public class ProfileImages extends AppCompatActivity {
         gridView.setColumnWidth(imageWidht);
 
         adapterGridView = new GridImageAdapter(mContext, R.layout.layout_image_gridview, "", imgList, imageWidht);
-        gridView.setAdapter(adapterGridView);
         adapterGridView.notifyDataSetChanged();
+        //gridView.invalidateViews();
+        gridView.setAdapter(adapterGridView);
+
     }
 
     private void initRecyclerView(final ArrayList<String> imgList){

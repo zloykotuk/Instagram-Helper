@@ -41,7 +41,7 @@ public class MainActivity extends Activity {
                             @Override
                             public void onResponse(Call<Post> call, Response<Post> response) {
                                 Post post = response.body();
-                                result.setText(String.valueOf(post.getGraphql().getUser().getId()));
+                                //result.setText(String.valueOf(post.getGraphql().getUser().getId()));
                                 CSRFToken = NetworkService.getInstance().getCSRFToken();
                                 Cookies = NetworkService.getInstance().getCookieValue();
                                 Log.d("1", CSRFToken);

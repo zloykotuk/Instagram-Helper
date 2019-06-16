@@ -44,7 +44,7 @@
                         android:maxHeight="50dp"
                         android:maxWidth="50dp"
                         android:layout_alignParentRight="true"
-                        android:src="@drawable/save"
+                        android:src="@drawable/apply"
                         android:id="@+id/applyChange"/>
 
                 </RelativeLayout>
